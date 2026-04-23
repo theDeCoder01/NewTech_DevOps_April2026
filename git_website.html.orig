@@ -1,0 +1,9 @@
+<html>
+<h1>DevOps Demo</h1>
+<<<<<<< HEAD
+<body>Welcome to <b>DevOps Demo<\b> Session</body>
+<p>Ali was here</p>
+=======
+<body style="color:red">Welcome to <b>DevOps Demo</b> Session</body>
+>>>>>>> update_website
+</html>
