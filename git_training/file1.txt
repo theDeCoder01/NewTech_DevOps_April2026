@@ -2,3 +2,5 @@ My first file
 Another line
 
 Haifa was here and made it better
+
+Indeed Haifa made it better
