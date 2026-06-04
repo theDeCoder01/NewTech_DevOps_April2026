@@ -1,7 +1,18 @@
 variable "region" {
   type        = string
   description = "The region to deploy the resources"
-  default     = "us-east-1"
+  default     = "eu-central-1"
+}
+
+variable "project_name" {
+  type        = string
+  description = "Name prefix applied to all resources in this project"
+  default     = "mini-project"
+}
+
+variable "vpc_id" {
+  type        = string
+  description = "The VPC ID where the security group will be created"
 }
 
 variable "ami" {
@@ -13,5 +24,5 @@ variable "ami" {
 variable "instance_type" {
   type        = string
   description = "The instance type to deploy the resources"
-  #default     = "t3.micro"
+  default     = "t3.micro"
 }
