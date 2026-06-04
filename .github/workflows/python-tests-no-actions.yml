@@ -1,0 +1,18 @@
+name: Python Tests - Lab 1 (Pure Bash)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Clone repository
+      run: |
+        git clone https://x-access-token:${{ github.token }}@${{ github.server_url != 'https://github.com' && github.server_url || 'github.com' }}/${{ github.repository }}.git repo
+        cd repo
+        git checkout ${{ github.sha }}

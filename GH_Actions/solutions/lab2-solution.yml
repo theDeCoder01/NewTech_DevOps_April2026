@@ -1,0 +1,222 @@
+# ============================================================================
+# Lab 2 Solution: Comprehensive GitHub Actions Workflow
+# ============================================================================
+# This workflow demonstrates all bonus features requested in Lab 2:
+# 1. Multiple Python versions (3.9, 3.10, 3.11) - BONUS
+# 2. Code coverage reporting - BONUS
+# 3. Runs on both push and pull requests - BONUS
+# 4. Linting step for code quality - BONUS
+# 5. Multiple jobs for lab1 and lab2 - BONUS
+# ============================================================================
+
+# Workflow name that appears in the GitHub Actions UI
+name: Lab 2 - Complete Solution
+
+# ============================================================================
+# TRIGGERS: Define when this workflow should run
+# ============================================================================
+on:
+  # Run workflow when code is pushed to the main branch
+  push:
+    branches: [ main ]
+
+  # Also run when a pull request is opened/updated targeting main
+  # This allows testing changes BEFORE merging them
+  pull_request:
+    branches: [ main ]
+
+# ============================================================================
+# JOBS: Define the work to be done
+# ============================================================================
+# Jobs run in parallel by default, but can be ordered using 'needs'
+jobs:
+  # --------------------------------------------------------------------------
+  # JOB 1: LINT - Check code quality and style
+  # --------------------------------------------------------------------------
+  lint:
+    name: Lint Code
+    runs-on: ubuntu-latest
+
+    steps:
+    # STEP 1: Get the code from the repository
+    # 'uses' keyword means we're using a pre-built action from GitHub
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # STEP 2: Set up Python environment
+    # We only need one Python version for linting (not all 3)
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    # STEP 3: Install linting tools
+    # flake8: checks code style and finds errors
+    # pylint: advanced code analysis
+    # black: code formatter
+    - name: Install linting tools
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pylint black
+
+    # STEP 4: Lint Lab 1 code
+    # First command: Check for serious errors (E9, F63, F7, F82)
+    # Second command: Check all style issues but don't fail the build (--exit-zero)
+    - name: Lint Lab 1 with flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      working-directory: './GH_Actions/lab1'
+      continue-on-error: true  # Don't stop workflow if linting finds issues
+
+    # STEP 5: Lint Lab 2 code (same as Lab 1)
+    - name: Lint Lab 2 with flake8
+      run: |
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      working-directory: './GH_Actions/lab2'
+      continue-on-error: true
+
+    # STEP 6: Check if code follows Black formatting standards
+    # || true means "don't fail if formatting issues found"
+    - name: Check code formatting with black
+      run: |
+        black --check ./GH_Actions/lab1 ./GH_Actions/lab2 || true
+
+  # --------------------------------------------------------------------------
+  # JOB 2: TEST LAB 1 - Run tests with multiple Python versions
+  # --------------------------------------------------------------------------
+  test-lab1:
+    # ${{ matrix.python-version }} is replaced with actual version (3.9, 3.10, 3.11)
+    name: Test Lab 1 (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    # 'needs' makes this job wait for lint to complete successfully
+    needs: lint
+
+    # MATRIX STRATEGY: Creates 3 parallel jobs (one per Python version)
+    # Instead of writing the same job 3 times, matrix does it automatically!
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    # Note: python-version uses the matrix value (3.9, 3.10, or 3.11)
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    # pytest-cov: adds coverage reporting to pytest
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      working-directory: './GH_Actions/lab1'
+
+    # -v: verbose output (shows each test)
+    # --cov=calculator: measure coverage for calculator.py
+    # --cov-report=term-missing: show which lines are NOT tested
+    # --cov-report=xml: create XML report for uploading
+    - name: Run tests with coverage
+      run: |
+        pytest test_calculator.py -v --cov=calculator --cov-report=term-missing --cov-report=xml
+      working-directory: './GH_Actions/lab1'
+
+    # 'if' condition: only run this step for Python 3.11 (not 3.9 or 3.10)
+    # This avoids uploading 3 identical reports
+    - name: Upload coverage report
+      if: matrix.python-version == '3.11'
+      uses: actions/upload-artifact@v4
+      with:
+        name: lab1-coverage-report
+        path: ./GH_Actions/lab1/coverage.xml
+
+  # --------------------------------------------------------------------------
+  # JOB 3: TEST LAB 2 - Run tests with multiple Python versions
+  # --------------------------------------------------------------------------
+  test-lab2:
+    name: Test Lab 2 (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+
+    # Also waits for lint, but NOT for test-lab1
+    # This means lab1 and lab2 tests run at the same time!
+    needs: lint
+
+    strategy:
+      matrix:
+        python-version: ['3.9', '3.10', '3.11']
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pytest pytest-cov
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+      working-directory: './GH_Actions/lab2'
+
+    - name: Run tests with coverage
+      run: |
+        pytest test_string_utils.py -v --cov=string_utils --cov-report=term-missing --cov-report=xml
+      working-directory: './GH_Actions/lab2'
+
+    - name: Upload coverage report
+      if: matrix.python-version == '3.11'
+      uses: actions/upload-artifact@v4
+      with:
+        name: lab2-coverage-report
+        path: ./GH_Actions/lab2/coverage.xml
+
+    - name: Display coverage summary
+      if: matrix.python-version == '3.11'
+      run: |
+        pip install coverage
+        coverage report
+      working-directory: './GH_Actions/lab2'
+
+  # --------------------------------------------------------------------------
+  # JOB 4: SUMMARY - Display final results
+  # --------------------------------------------------------------------------
+  summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+
+    # Wait for BOTH test jobs to finish
+    needs: [test-lab1, test-lab2]
+
+    # 'if: always()' means run even if tests fail!
+    if: always()
+
+    steps:
+    - name: Check results
+      run: |
+        echo "==================================="
+        echo "All tests completed!"
+        echo "==================================="
+        echo "Lab 1 Status: ${{ needs.test-lab1.result }}"
+        echo "Lab 2 Status: ${{ needs.test-lab2.result }}"
+        echo "==================================="
+
+# ============================================================================
+# WORKFLOW EXECUTION ORDER:
+# ============================================================================
+# 1. lint (1 job)
+#     ↓
+# 2. test-lab1 (3 jobs) + test-lab2 (3 jobs) run in parallel = 6 jobs total
+#     ↓
+# 3. summary (1 job)
+#
+# Total: 8 jobs run across 3 stages
+# ============================================================================
