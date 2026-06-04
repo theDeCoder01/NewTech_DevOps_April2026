@@ -33,6 +33,8 @@ class Calculator:
             raise ValueError("Cannot calculate square root of negative number")
         return number ** 0.5
 
+# Adding dummy code
+# put another comment for fun
 
 def main():
     """Demo function to show calculator usage."""
