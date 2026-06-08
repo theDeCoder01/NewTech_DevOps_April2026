@@ -1,6 +1,6 @@
 # GitHub Actions Labs
 
-Three hands-on labs that teach GitHub Actions CI/CD by building and testing real Python projects.
+Four hands-on labs that progressively teach GitHub Actions CI/CD — from Python testing pipelines through to Terraform infrastructure automation.
 
 ## Lab Structure
 
@@ -27,10 +27,21 @@ GH_Actions/
 │   ├── requirements.txt
 │   ├── README.md
 │   └── SOLUTION.md     # Instructor solution guide
+├── lab4/               # Terraform CI/CD — fmt, validate, checkov, plan, apply
+│   ├── terraform/
+│   │   ├── main.tf                  # Intentionally broken — fix it with CI
+│   │   ├── variables.tf
+│   │   ├── outputs.tf
+│   │   └── terraform.tfvars.example
+│   ├── README.md
+│   └── SOLUTION.md     # Instructor solution guide
 └── solutions/
     ├── lab1-solution.md   # Lab 1 workflow walkthrough (instructor reference)
     ├── lab2-solution.yml  # Lab 2 full bonus solution workflow (instructor reference)
-    └── lab3-solution.yml  # Lab 3 full bonus solution workflow (instructor reference)
+    ├── lab3-solution.yml  # Lab 3 full bonus solution workflow (instructor reference)
+    ├── lab4-single.yml    # Lab 4 single workflow with conditional apply
+    ├── lab4-ci.yml        # Lab 4 CI-only workflow (split version)
+    └── lab4-cd.yml        # Lab 4 CD workflow (split version)
 ```
 
 The active workflow files live at the **repository root** under `.github/workflows/`:
@@ -71,6 +82,16 @@ Design a workflow where multiple jobs run **at the same time**.
 
 Start here: [lab3/README.md](./lab3/README.md)
 
+### Lab 4 — Terraform CI/CD
+
+Write a CI/CD pipeline for infrastructure-as-code.
+
+**Goal:** Create a single GitHub Actions workflow that runs `terraform fmt`, `terraform validate`, `checkov` security scanning, and `terraform plan` on every PR — then conditionally runs `terraform apply` only when code reaches `main`. The provided Terraform code has intentional bugs; your pipeline catches them and you fix them.
+
+**Enhancement:** Refactor the single conditional workflow into two separate files — `terraform-ci.yml` (PR) and `terraform-cd.yml` (merge to main).
+
+Start here: [lab4/README.md](./lab4/README.md)
+
 ## Prerequisites
 
 - A GitHub account
@@ -94,4 +115,13 @@ pytest test_validator.py -v
 pytest test_transformer.py -v
 pytest test_reporter.py -v
 # or: pytest -v
+
+# Lab 4 (Terraform — requires AWS credentials)
+cd GH_Actions/lab4/terraform
+cp terraform.tfvars.example terraform.tfvars  # fill in your values
+terraform init -backend-config="bucket=YOUR-STATE-BUCKET"
+terraform fmt -check
+terraform validate
+checkov -d . --framework terraform
+terraform plan -var-file=terraform.tfvars
 ```

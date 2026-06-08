@@ -1,0 +1,10 @@
+# Copy this file to terraform.tfvars and fill in your values.
+# terraform.tfvars is gitignored — never commit real values.
+
+aws_region   = "us-east-1"
+environment  = "lab"
+project_name = "lab4"
+
+# Must be globally unique across all of AWS.
+# Convention: <your-name>-lab4-<random-suffix>  e.g. "alice-lab4-a3f9"
+bucket_name  = "YOUR-NAME-lab4-XXXX"

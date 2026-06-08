@@ -1,0 +1,109 @@
+# ============================================================================
+# Lab 4 Solution — Single workflow with conditional apply
+# ============================================================================
+# This is the starting point students build.
+#
+# One job handles all stages. The apply and output steps are skipped on PRs
+# using an 'if:' condition — they only run when code reaches main.
+#
+# EXECUTION (PR):           fmt → validate → checkov → plan
+# EXECUTION (push to main): fmt → validate → checkov → plan → apply → output
+# ============================================================================
+
+name: Terraform CI/CD (Single Workflow)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  terraform:
+    name: Terraform
+    runs-on: ubuntu-latest
+
+    # AWS credentials are available to every step in this job
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+      # TF_VAR_* variables are automatically picked up by terraform plan/apply
+      TF_VAR_bucket_name: ${{ secrets.TF_BUCKET_NAME }}
+      TF_VAR_environment: lab
+      TF_VAR_project_name: lab4
+
+    steps:
+      # ── 1. Get the code ──────────────────────────────────────────────────────
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      # ── 2. Install Terraform ─────────────────────────────────────────────────
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.9.0'
+
+      # ── 3. Initialise — pass state bucket via -backend-config ────────────────
+      # Terraform's backend block cannot use variables, so we pass the bucket
+      # name at init time. This is the standard pattern in real-world pipelines.
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -input=false
+        working-directory: './GH_Actions/lab4/terraform'
+
+      # ── 4. Format check ──────────────────────────────────────────────────────
+      # -check exits with code 1 if any file needs formatting.
+      # -diff shows exactly which lines would change.
+      # This is the first thing that will fail on the provided broken code.
+      - name: Terraform Format Check
+        run: terraform fmt -check -diff -recursive
+        working-directory: './GH_Actions/lab4/terraform'
+
+      # ── 5. Validate ──────────────────────────────────────────────────────────
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: './GH_Actions/lab4/terraform'
+
+      # ── 6. Security scan ─────────────────────────────────────────────────────
+      # checkov checks Terraform code for security misconfigurations.
+      # --skip-check CKV_AWS_18: S3 access logging (requires a second bucket —
+      #   out of scope for this lab but worth knowing about).
+      - name: Install checkov
+        run: pip install checkov --quiet
+
+      - name: Security Scan with checkov
+        run: |
+          checkov -d . \
+            --framework terraform \
+            --quiet \
+            --skip-check CKV_AWS_18,CKV2_AWS_62
+        working-directory: './GH_Actions/lab4/terraform'
+
+      # ── 7. Plan ──────────────────────────────────────────────────────────────
+      # -out saves the plan so apply uses the exact same execution plan.
+      # terraform show converts the binary plan to human-readable output.
+      - name: Terraform Plan
+        run: |
+          terraform plan -out=tfplan -input=false
+          echo "──────────── Plan Summary ────────────"
+          terraform show -no-color tfplan
+        working-directory: './GH_Actions/lab4/terraform'
+
+      # ── 8. Apply ─────────────────────────────────────────────────────────────
+      # THE KEY LESSON: this step only runs when a commit reaches main.
+      # On a pull request, github.event_name == 'pull_request', so this is skipped.
+      # After a PR is merged, github.event_name == 'push' and ref == 'refs/heads/main'.
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply -auto-approve tfplan
+        working-directory: './GH_Actions/lab4/terraform'
+
+      # ── 9. Output ────────────────────────────────────────────────────────────
+      # Verify the deployment produced the expected values.
+      - name: Terraform Output
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform output
+        working-directory: './GH_Actions/lab4/terraform'

@@ -1,0 +1,81 @@
+# ============================================================================
+# Lab 4 Solution — CD workflow (split version)
+# ============================================================================
+# Triggered on push to main (i.e. after a PR is merged).
+# Re-runs the full quality gate AND then applies.
+#
+# Why re-run the quality gate here?
+#   The CI workflow ran on the feature branch. By the time the PR is merged,
+#   main may have received other commits. Running the checks again here ensures
+#   the merged state is always valid before applying.
+# ============================================================================
+
+name: Terraform CD
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  terraform-cd:
+    name: Terraform CD
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: us-east-1
+      TF_VAR_bucket_name: ${{ secrets.TF_BUCKET_NAME }}
+      TF_VAR_environment: lab
+      TF_VAR_project_name: lab4
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.9.0'
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" \
+            -input=false
+        working-directory: './GH_Actions/lab4/terraform'
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -diff -recursive
+        working-directory: './GH_Actions/lab4/terraform'
+
+      - name: Terraform Validate
+        run: terraform validate
+        working-directory: './GH_Actions/lab4/terraform'
+
+      - name: Install checkov
+        run: pip install checkov --quiet
+
+      - name: Security Scan with checkov
+        run: |
+          checkov -d . \
+            --framework terraform \
+            --quiet \
+            --skip-check CKV_AWS_18,CKV2_AWS_62
+        working-directory: './GH_Actions/lab4/terraform'
+
+      - name: Terraform Plan
+        run: |
+          terraform plan -out=tfplan -input=false
+          echo "──────────── Plan Summary ────────────"
+          terraform show -no-color tfplan
+        working-directory: './GH_Actions/lab4/terraform'
+
+      # Apply only happens in this CD workflow — never in the CI workflow
+      - name: Terraform Apply
+        run: terraform apply -auto-approve tfplan
+        working-directory: './GH_Actions/lab4/terraform'
+
+      - name: Terraform Output
+        run: terraform output
+        working-directory: './GH_Actions/lab4/terraform'
