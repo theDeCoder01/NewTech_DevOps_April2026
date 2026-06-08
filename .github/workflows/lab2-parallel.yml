@@ -1,7 +1,14 @@
 name: Lab 2 - Parallel Solution (Advanced)
 
+# on:
+#   workflow_dispatch   # disabled — enable after teaching parallel concepts
+
 on:
-  workflow_dispatch   # disabled — enable after teaching parallel concepts
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  
 
 # ─────────────────────────────────────────────────────────────────────────────
 # The one change from the sequential version:
