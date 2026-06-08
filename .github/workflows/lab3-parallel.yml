@@ -7,32 +7,40 @@ on:
 # EXECUTION ORDER
 #
 #  STAGE 1 — all three test jobs start simultaneously (no 'needs' between them)
+#            each job runs a matrix of 3 Python versions (3.11, 3.10, 3.9)
 #
-#    [test-validator]   [test-transformer]   [test-reporter]
+#    [test-validator (3.11/3.10/3.9)]
+#    [test-transformer (3.11/3.10/3.9)]
+#    [test-reporter (3.11/3.10/3.9)]
 #
-#  STAGE 2 — fan-in: summary waits for all three to finish
+#  STAGE 2 — fan-in: summary waits for all three jobs (all matrix runs) to finish
 #
 #                      [pipeline-summary]
 #
-# Total time ≈ time for the slowest single test job (not the sum of all three)
+# Total time ≈ time for the slowest single test job matrix run (not the sum)
 # ─────────────────────────────────────────────────────────────────────────────
 
 jobs:
 
   # ── JOB 1 ──────────────────────────────────────────────────────────────────
   # No 'needs:' → starts immediately when the workflow is triggered
+  # Matrix runs 3 Python versions in parallel
   test-validator:
-    name: Test Validator Module
+    name: Test Validator Module (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.10', '3.9']
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Set up Python 3.11
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
@@ -46,18 +54,23 @@ jobs:
 
   # ── JOB 2 ──────────────────────────────────────────────────────────────────
   # No 'needs:' → also starts immediately, runs alongside test-validator
+  # Matrix runs 3 Python versions in parallel
   test-transformer:
-    name: Test Transformer Module
+    name: Test Transformer Module (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.10', '3.9']
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Set up Python 3.11
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
@@ -71,18 +84,23 @@ jobs:
 
   # ── JOB 3 ──────────────────────────────────────────────────────────────────
   # No 'needs:' → also starts immediately, runs alongside the other two
+  # Matrix runs 3 Python versions in parallel
   test-reporter:
-    name: Test Reporter Module
+    name: Test Reporter Module (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ['3.11', '3.10', '3.9']
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Set up Python 3.11
+      - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
