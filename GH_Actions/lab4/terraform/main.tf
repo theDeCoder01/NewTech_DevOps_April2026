@@ -14,7 +14,7 @@ terraform {
   #   CI:     terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
   backend "s3" {
     key    = "lab4/terraform.tfstate"
-    region = "us-east-1"
+    region = "eu-central-1"
   }
 }
 
