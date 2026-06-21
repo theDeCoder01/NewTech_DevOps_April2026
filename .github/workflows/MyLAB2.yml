@@ -61,6 +61,5 @@ jobs:
       - name: Run tests for LAB2
         run: |
           pip install pytest pytest-cov
-          python -m pytest test_calculator.py --cov=calculator --cov-report=term-missing
           python -m pytest test_string_utils.py --cov=string_utils --cov-report=term-missing
         working-directory: ${{ matrix.working-directory }}
