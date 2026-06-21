@@ -53,5 +53,7 @@ jobs:
         working-directory: ${{ matrix.working-directory }}
 
       - name: Run tests
-        run: python -m pytest test_calculator.py --cov=calculator --cov-report=term-missing
+        run: |
+          pip install pytest pytest-cov
+          python -m pytest test_calculator.py --cov=calculator --cov-report=term-missing
         working-directory: ${{ matrix.working-directory }}
