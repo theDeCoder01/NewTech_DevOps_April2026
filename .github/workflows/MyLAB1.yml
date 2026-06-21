@@ -1,5 +1,8 @@
 name: LAB1_CI
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true #This is to get rid of the annoying warning about Node.js 20 being deprecated in GitHub Actions.
+
 on:
   push:
     branches:
@@ -9,11 +12,11 @@ on:
       - main
 
 permissions:
-  contents: write
+  contents: write #to give the workflow permission to commit and push changes back to the repository. not needed right now.
 
 jobs:
   LAB1_Test:
-    strategy:
+    strategy: #to use the same workflow to test in multiple Python versions and the usage of variables.
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11"]
         working-directory: ["./GH_Actions/lab1"]
@@ -40,7 +43,7 @@ jobs:
           black .
         working-directory: ${{ matrix.working-directory }}
 
-      # - name: Commit and Push formatting fixes
+      # - name: Commit and Push formatting fixes #to automatically commit and push any formatting fixes made by Black.
       #   uses: stefanzweifel/git-auto-commit-action@v5
       #   with:
       #     commit_message: "chore: automated format fixes via Black"
@@ -49,7 +52,7 @@ jobs:
       - name: lint with flake8
         run: |
           pip install flake8
-          flake8 . --format='::warning file=%(path)s,line=%(row)d,col=%(col)d::[Flake8] %(code)s: %(text)s' --exit-zero
+          flake8 . --format='::warning file=%(path)s,line=%(row)d,col=%(col)d::[Flake8] %(code)s: %(text)s' --exit-zero #force flake 8 to code 0 while still echoing the errors.
         working-directory: ${{ matrix.working-directory }}
 
       - name: Run tests
