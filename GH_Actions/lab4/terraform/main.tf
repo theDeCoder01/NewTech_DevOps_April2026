@@ -14,7 +14,7 @@ terraform {
   #   CI:     terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}"
   backend "s3" {
     key    = "lab4/terraform.tfstate"
-    region = "eu-central-1"
+    region = "eu-north-1"
   }
 }
 
@@ -28,10 +28,10 @@ resource "aws_s3_bucket" "app_storage" {
   bucket = var.bucket_name
 
   tags = {
-    Name = var.bucket_name
+    Name        = var.bucket_name
     Environment = var.environment
-    Project = var.project_name
-    ManagedBy = "terraform"
+    Project     = var.project_name
+    ManagedBy   = "terraform"
   }
 }
 
