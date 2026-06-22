@@ -1,0 +1,78 @@
+name: LAB4_CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    strategy: #to use the same workflow to test in multiple Python versions and the usage of variables.
+      fail-fast: false
+      matrix:
+        #os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]
+        terraform-version: ["1.14.6"]
+        working-directory: ["./GH_Actions/lab4/terraform"]
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      TF_VAR_bucket_name: ${{ secrets.TF_BUCKET_NAME }}
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ matrix.terraform-version }}
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" -backend-config="region=eu-north-1"
+
+      - name: Terraform format check
+        id: fmt
+        run: terraform fmt -check
+        continue-on-error: false
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate
+
+      - name: Checkov GitHub Action
+        uses: bridgecrewio/checkov-action@v12
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan -auto-approve -out=tfplan
+        working-directory: ${{ matrix.working-directory }}
+
+      - name: Terraform Apply
+        id: apply
+        if: steps.plan.outcome == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform apply tfplan -auto-approve
+
+      - name: Terraform output
+        id: output
+        if: steps.apply.outcome == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: terraform output
+
+    #   - name: Terraform Destroy
+    #     if: github.event_name == 'push'
+    #     run: terraform destroy tfplan -auto-approve
+
+    #   - uses: actions/github-script@v7
+    #     if: github.event_name == 'pull_request'
+    #     env:
+    #     PLAN: "terraform\n${{ steps.plan.outputs.stdout }}"
+    #     with:
+    #         github-token: ${{ secrets.GITHUB_TOKEN }}
+    #         script: |
