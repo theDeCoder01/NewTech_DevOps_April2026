@@ -1,0 +1,75 @@
+name: LAB4_Drift_CI
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+
+permissions:
+  contents: read #to pass Checkov security criteria.
+
+jobs:
+  build:
+    strategy: #to use the same workflow to test in multiple Python versions and the usage of variables.
+      fail-fast: false
+      matrix:
+        #os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest]
+        terraform-version: ["1.14.6"]
+        working-directory: ["./GH_Actions/lab4/terraform"]
+
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      TF_VAR_bucket_name: ${{ secrets.TF_BUCKET_NAME }}
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ matrix.terraform-version }}
+
+      - name: Cache Terraform Providers
+        id: cache-providers
+        uses: actions/cache@v6
+        with:
+          path: .terraform
+          key: terraform-${{ matrix.os }}-${{ hashFiles('**/.terraform.lock.hcl') }}
+          restore-keys: |
+            terraform-${{ matrix.os }}-
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" -backend-config="region=eu-north-1"
+        working-directory: ${{ matrix.working-directory }}
+
+      - name: Terraform format check
+        id: fmt
+        run: terraform fmt -check
+        continue-on-error: false
+        working-directory: ${{ matrix.working-directory }}
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate
+        working-directory: ${{ matrix.working-directory }}
+
+      - name: Checkov GitHub Action
+        uses: bridgecrewio/checkov-action@v12
+
+      - name: Terraform Plan
+        id: plan
+        run: |
+          terraform plan -out=tfplan
+          echo "exitcode=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        working-directory: ${{ matrix.working-directory }}
+
+      - name: Fail if Drift Detected
+        if: steps.plan.outputs.exitcode == '2'
+        run: |
+          echo "Drift detected! Infrastructure has changed outside of Terraform."
+          exit 1
