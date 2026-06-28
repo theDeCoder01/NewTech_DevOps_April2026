@@ -40,15 +40,18 @@ jobs:
       - name: Terraform Init
         id: init
         run: terraform init -backend-config="bucket=${{ secrets.TF_STATE_BUCKET }}" -backend-config="region=eu-north-1"
+        working-directory: ${{ matrix.working-directory }}
 
       - name: Terraform format check
         id: fmt
         run: terraform fmt -check
         continue-on-error: false
+        working-directory: ${{ matrix.working-directory }}
 
       - name: Terraform Validate
         id: validate
         run: terraform validate
+        working-directory: ${{ matrix.working-directory }}
 
       - name: Checkov GitHub Action
         uses: bridgecrewio/checkov-action@v12
