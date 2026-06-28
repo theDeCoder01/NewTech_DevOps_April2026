@@ -12,6 +12,11 @@ permissions:
   contents: read #to pass Checkov security criteria.
   pull-requests: write #to give the workflow permission to comment on PRs with plan details.
 
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  TF_VAR_bucket_name: ${{ secrets.TF_BUCKET_NAME }}
+
 jobs:
   build:
     strategy: #to use the same workflow to test in multiple Python versions and the usage of variables.
@@ -21,11 +26,6 @@ jobs:
         os: [ubuntu-latest]
         terraform-version: ["1.14.6", "1.13.0", "1.12.0"]
         working-directory: ["./GH_Actions/lab4/terraform"]
-
-    env:
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-      TF_VAR_bucket_name: ${{ secrets.TF_BUCKET_NAME }}
 
     runs-on: ${{ matrix.os }}
 
@@ -94,7 +94,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const plan = fs.readFileSync('tfplan.txt', 'utf8');
+            const plan = fs.readFileSync('tfplan', 'utf8');
             const truncated = plan.length > 65000 ? plan.substring(0, 65000) + '\n... (truncated)' : plan;
 
             const body = `## Terraform Plan
@@ -103,5 +103,8 @@ jobs:
             \`\`\``;
 
             await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
               body: body
             });
