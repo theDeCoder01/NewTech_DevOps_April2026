@@ -65,11 +65,13 @@ jobs:
         id: apply
         if: steps.plan.outcome == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform apply tfplan
+        working-directory: ${{ matrix.working-directory }}
 
       - name: Terraform output
         id: output
         if: steps.apply.outcome == 'success' && github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: terraform output
+        working-directory: ${{ matrix.working-directory }}
 
     #   - name: Terraform Destroy
     #     if: github.event_name == 'push'
